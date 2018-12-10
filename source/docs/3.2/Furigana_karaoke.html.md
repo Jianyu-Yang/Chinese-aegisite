@@ -14,22 +14,32 @@ text_](http://en.wikipedia.org/wiki/Ruby_character), but since the
 implementation discussed here is designed specifically with Japanese furigana
 in mind, the ruby text is also referred to as furigana everywhere.
 
+Furigana（在Aegisub中经常缩写为furi）指的是沿日文主文本上写的小的注音字符，特别是使用平假名来描述表意的汉字字符如何发音。将较小的文本放在主文本行旁边通常称为ruby text(旁注文字)，但由于此处讨论的实现是专门为日文假名注音设计的，因此ruby text在任何地方也被称为furigana(假名注音)。
+
 None of the subtitle formats Aegisub supports natively support ruby text or
 furigana, however the [[karaskel|Automation/Lua/Modules/karaskel.lua]] standard include
 implements an algorithm that can create basic furigana layouts by calculating
 the position of every individual character.
 
+没有任何字幕格式被Aegisub本地支持ruby text或furigana，但[[karaskel | Automation / Lua / Modules / karaskel.lua]]标准包括实现一种可以通过计算每个字符的位置来创建基本的furigana布局的算法。
+
 This page describes the syntax the Automation 4 karaskel.lua script understands
 for furigana text, and how to use the layout information it calculates to
 actually create positioned characters.
 
+此页面描述了Automation 4 karaskel.lua脚本理解furigana文本的语法，以及如何使用它计算的布局信息来实际创建定位字符。
+
 [[Karaoke Templater|Automation/Karaoke_Templater]] also implements support for
 furigana using the karaskel.lua algorithm and syntax.
+
+Karaoke Templater也通过使用karaskel.lua的算法和语法实现了对furigana的支持。
 
 It's important to note that the syntax is designed for karaoke, and revolves
 around [[karaoke timed|Karaoke_timing]] text. It isn't suited for typesetting
 regular text (e.g. dialogue lines) with general purpose ruby text. A more
 elaborate syntax and more complex layout engine would be required for that.
+
+重要的是要注意语法是为卡拉OK设计的，并以卡拉OK定时文本为核心。它不适合用于用通用的ruby text去排版常规文本（例如对话行）。为此，需要更精细的语法和更复杂的布局工具。
 
 ## Multi-highlight syntax  ##
 A prerequisite for an integral part of the furigana syntax is the
@@ -41,19 +51,31 @@ the timing of the two syllables are added together, producing just one
 syllable. You can have multiple number sign syllables in a row, adding up
 multiple timings in that way.
 
+多重高亮语法
+furigana语法不可或缺的一个先决条件是多重高亮语法。
+如果你将一个音节的文本设为数字符号（＃，ASCII 35，Unicode U + 0023），则该音节将与前一个音符“连接”：删除数字符号即将两个音节的时间相加，合成为一个音节。在一行中您可以使用多个数字符号音节，以这种方式添加多个计时。
+
 The timings of the individual number sign syllables are still stored in the
 [[highlight table|Automation/Lua/Modules/karaskel.lua#highlighttable]] of the
 generated syllable structure, but the main timing (`start_time` and `end_time`)
 of the syllable structure reflects only the added-together timings of the
 number sign syllables.
 
+各个数字符号音节的计时信息仍存储在所生成的音节结构的高亮表中，但是音节结构的主计时（start_time和end_time）仅反映数字符号音节的相加计时。
+
 {::template name="examplebox"}
 This line shows how multi-highlight syntax is used to mark up kanji and groups
 of kanji that cover multiple syllables:
 
+例子
+此行展示如何使用多重高亮语法标记涵盖多个音节的汉字和汉字组：
+
+
     {\k5}明日{\k10}#{\k5}#{\k10}ま{\k7}た{\k10}会{\k4}う{\k6}時{\k14}#
 
 It generates the following syllable structures:
+
+其生成了以下音节结构：
 
 <table class="karatable">
     <tr><th>Text</th><th>Syllable duration</th><th>Highlight durations</th></tr>
@@ -83,12 +105,21 @@ syllables they belong to. If the string of furigana is wider than the main text
 the furigana is left-aligned with the main text. You can control this behaviour
 with special control characters, see below.
 
+基础furigana
+要给一个音节添加furigana，请在主音节文本后添加管道符（|，ASCII 124，Unicode U + 007C），然后在管道符后添加假名注音文本。您也可以为重复音节（用于多重高亮的数字符号音节）添加假名注音，以使单个主音节由多个假名注音。
+当多个连续的音节都有假名注音时，所有这些音节的假名都被收集在一起，并且位于它们所属的主音节字符串的正上方。如果注音假名的字符串比主文本宽，则假名字符与主文本左对齐。您可以使用特殊控制字符控制此行为，请参阅下文。
+
 {::template name="examplebox"}
 Adding furigana to the example above:
+
+在上面的示例中添加注音假名：
+
 
     {\k5}明日|あ{\k10}#|し{\k5}#|た{\k10}ま{\k7}た{\k10}会|あ{\k4}う{\k6}時|と{\k14}#|き
 
 The following syllables, highlights and furigana are produced:
+
+生成了以下音节，高亮和注音假名：
 
 <table class="karatable">
     <tr><th>Text</th><th>Syllable duration</th><th>Highlight/furigana durations</th><th>Furigana</th></tr>
@@ -131,9 +162,20 @@ In all cases, if two furigana sequences extend beyond their main text such that
 they would overlap, the main text is moved such that the furigana won't
 overlap.
 
+控制布局
+通常使用简单的假名注音语法生成的布局并不完全是您想要的，或者甚至可能是误导性的。因此，有两个特殊字符可用于控制注音假名的布局方式。
+这两个特殊字符都放在一个音节的第一个注音假名字符之前，即紧跟在管道字符之后。
+第一个字符是用于标记“序列中断”的感叹号（！，ASCII 33，Unicode U + 0021）。这是一种不可见的分隔符，可以防止这个音节中的注音假名与前一个音节的注音假名重合。当你有两个相邻的汉字都有注音假名时，你通常会使用它，但是它们的假名必须是分开的。在这种情况下，将感叹号作为第二个汉字的第一个音节的注音假名的第一个字符。
+另一个特殊字符是小于号（<，ASCII 60，Unicode U + 003C），它标志着“浮动左侧的序列中断”。它具有与感叹号相同的序列中断语义，但改变了溢出行为。当注音假名序列以小于号的方式开始时，被标记的注音假名音节比它所应用的主文本宽，它将位于主文本的正上方(上方居中)，即使这意味着它必须延伸到它的左边缘以外。
+在所有情况下，如果两个注音假名序列延伸超出其主文本以使它们重叠，则移动主文本使得注音假名不会重叠。
+
+
+
 {::template name="examplebox"}
 Here is the same (rather contrived) sample text shown without layout control
 and with each of the two layout control characters:
+
+这是相同的（相当人为的）示例文本，演示了没有布局控制符和两个布局控制符中的每一个：
 
 | [[img/Furigana-demo-4.png]] | `{\k10}`中\|ちゅ`{\k10}`#\|う`{\k10}`国\|ご`{\k10}`#\|く<br>`{\k10}`<u>魂\|た</u>`{\k10}`#\|ま`{\k10}`#\|し`{\k10}`#\|い
 | [[img/Furigana-demo-3.png]] | `{\k10}`中\|ちゅ`{\k10}`#\|う`{\k10}`国\|ご`{\k10}`#\|く<br>`{\k10}`<u>魂\|!た</u>`{\k10}`#\|ま`{\k10}`#\|し`{\k10}`#\|い
@@ -145,6 +187,9 @@ extends a bit over the left edge of 魂 and above 国 while it exactly
 left-aligns with 魂 in the second. In the second, ちゅうごく is also centered
 above 中国 while it isn't in the first.
 {:/}
+
+由于差异仅为几个像素，因此很难区分两者之间的差异，但差异是存在的。在第一个例子中，た略微延伸，超出了魂的左边界到了国的上方，而在第二个例子中它与魂完全左对齐。并且与第一个例子不同的是，ちゅうごく也位于中国的正上方(上方居中)。
+
 
 ## Summary  ##
 
